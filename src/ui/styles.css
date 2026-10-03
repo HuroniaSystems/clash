@@ -1102,6 +1102,10 @@ table.stats td {
   padding: 3px 6px;
   border-bottom: 1px solid #d8ccb4;
 }
+table.stats tr.stats-head td {
+  color: var(--muted);
+  font-size: 13px;
+}
 table.stats td.up {
   color: #3b8a12;
 }

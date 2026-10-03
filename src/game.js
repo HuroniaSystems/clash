@@ -21,7 +21,9 @@ import { fmtNum } from './util/format.js';
 
 export class Game {
   constructor({ viewport, overlay, ui }) {
-    this.state = loadState() || newState();
+    const saved = loadState();
+    this.state = saved || newState();
+    this.isNew = !saved;
     this.engine = new Engine(viewport);
     this.terrain = new Terrain(this.engine.scene);
     this.overlay = new Overlay(this.engine, overlay);
@@ -32,7 +34,10 @@ export class Game {
     this.saveTimer = 0;
     this.ui = new UI(this, ui);
     this.view = new VillageView(this);
-    this.welcomeBack();
+    if (this.isNew) {
+      this.ui.showIntro();
+      saveState(this.state);
+    } else this.welcomeBack();
     this.last = performance.now();
     window.addEventListener('beforeunload', () => saveState(this.state));
     document.addEventListener('visibilitychange', () => {

@@ -329,7 +329,7 @@ export class UI {
     el.append(h('div', { class: 'bh-status' }, this.b.timerLabel, this.b.timer, this.b.stars, this.b.destr, this.b.speed));
 
     const bottom = h('div', { class: 'bh-bottom' });
-    this.b.endBtn = h('button', { class: 'btn red end-btn', onclick: () => this.game.endBattleEarly() }, v.mode === 'attack' && !sim.started ? 'Return Home' : 'End Battle');
+    this.b.endBtn = h('button', { class: `btn red end-btn ${v.mode === 'attack' ? '' : 'invisible'}`, onclick: () => this.game.endBattleEarly() }, v.mode === 'attack' && !sim.started ? 'Return Home' : 'End Battle');
     bottom.append(this.b.endBtn);
     if (v.mode === 'attack') {
       const tb = h('div', { class: 'troop-bar' });
@@ -467,6 +467,10 @@ export class UI {
 
   showBattleResult(summary, onDone) {
     this.openModal(panels.resultPanel(this, summary, onDone));
+  }
+
+  showIntro() {
+    this.openModal(panels.introPanel(this));
   }
 
   showWelcomeBack(info) {

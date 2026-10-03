@@ -91,9 +91,10 @@ export function infoPanel(ui, id, focusUpgrade = false) {
       const table = h(
         'table',
         { class: 'stats' },
+        hasNext ? h('tr', { class: 'stats-head' }, h('td', {}), h('td', {}, `Level ${Math.max(1, b.level)}`), h('td', {}, `Level ${nextLevel}`)) : null,
         cur.map(([k, v], i) => {
           const nv = nxt[i]?.[1];
-          return h('tr', {}, h('td', {}, k), h('td', {}, String(v)), hasNext ? h('td', { class: nv !== v ? 'up' : '' }, nv !== v ? `+ ${nv}` : '') : null);
+          return h('tr', {}, h('td', {}, k), h('td', {}, String(v)), hasNext ? h('td', { class: nv !== v ? 'up' : '' }, nv !== v ? String(nv) : '') : null);
         }),
       );
       const extra = [];
@@ -448,6 +449,28 @@ export function welcomePanel(ui, info) {
 }
 
 // ---------- settings ----------
+function helpList() {
+  return h('ul', { class: 'help' },
+    h('li', {}, 'Drag to pan, scroll or pinch to zoom.'),
+    h('li', {}, 'Tap buildings for actions: upgrade, move, collect, manage workers.'),
+    h('li', {}, 'Villagers arrive when you have free housing. Assign them jobs - matching skills give bigger bonuses, and they level up while working.'),
+    h('li', {}, 'Train troops at the Barracks, upgrade them in the Laboratory, then Attack rival villages for loot and trophies.'),
+    h('li', {}, 'In battle, pick a troop and tap (or hold) outside the red zone to deploy.'),
+    h('li', {}, 'From Town Hall 2, raiders attack your village. Defenses with Gunners and Lookouts hit harder.'));
+}
+
+export function introPanel(ui) {
+  return {
+    title: 'Welcome, Chief!',
+    render() {
+      return h('div', { class: 'welcome' },
+        h('p', {}, 'Your village is small, but it has a Town Hall, a few loyal villagers and big ambitions. Here is how it works:'),
+        helpList(),
+        h('button', { class: 'btn green', onclick: () => ui.closeModal() }, "Let's build!"));
+    },
+  };
+}
+
 export function settingsPanel(ui) {
   return {
     title: 'Settings',
@@ -458,13 +481,7 @@ export function settingsPanel(ui) {
         h('div', { class: 'section-title' }, 'Chief name'),
         h('div', { class: 'row-btns' }, input, h('button', { class: 'btn green', onclick: () => { ui.game.rename(input.value); ui.toast('Name saved', 'good'); } }, 'Save')),
         h('div', { class: 'section-title' }, 'How to play'),
-        h('ul', { class: 'help' },
-          h('li', {}, 'Drag to pan, scroll or pinch to zoom.'),
-          h('li', {}, 'Tap buildings for actions: upgrade, move, collect, manage workers.'),
-          h('li', {}, 'Villagers arrive when you have free housing. Assign them jobs - matching skills give bigger bonuses, and they level up while working.'),
-          h('li', {}, 'Train troops at the Barracks, upgrade them in the Laboratory, then Attack rival villages for loot and trophies.'),
-          h('li', {}, 'In battle, pick a troop and tap (or hold) outside the red zone to deploy.'),
-          h('li', {}, 'From Town Hall 2, raiders attack your village. Defenses with Gunners and Lookouts hit harder.')),
+        helpList(),
         h('div', { class: 'section-title' }, 'Danger zone'),
         h('button', { class: 'btn red', onclick: () => ui.confirm('Start over? Your whole village will be lost.', () => ui.game.resetGame()) }, 'Reset village'));
     },

@@ -154,11 +154,7 @@ export class VillageView {
     }
     if (b.level === 0) return constructionSite(size);
     const g = buildingModel(b.type, b.level);
-    if (b.upgrade) {
-      const sc = constructionSite(size);
-      sc.children[0].visible = false; // keep the building's own pad
-      g.add(sc);
-    }
+    if (b.upgrade) g.add(constructionSite(size, false));
     return g;
   }
 
@@ -457,10 +453,9 @@ export class VillageView {
       const f = caps[kind] ? state.resources[kind] / caps[kind] : 0;
       const fill = rec.parts.fill;
       if (kind === 'gold') {
-        fill.scale.setScalar(0.25 + 0.75 * f);
-        fill.visible = f > 0.02;
+        fill.scale.setScalar(0.3 + 0.7 * f);
       } else {
-        fill.scale.y = Math.max(0.02, f * 1.6);
+        fill.scale.y = 0.12 + f * 1.5;
       }
     }
   }
@@ -544,6 +539,7 @@ export class VillageView {
         p.fire.scale.set(s, 1 + Math.sin(this.time * 11) * 0.2, s);
       }
       if (p.liquid) p.liquid.scale.setScalar(1 + Math.sin(this.time * 2.5) * 0.04);
+      for (let i = 0; i < p.flags.length; i++) p.flags[i].rotation.y = Math.sin(this.time * 2.2 + i + rec.obj.position.x) * 0.35;
       if (p.turret && p.idleTurret) p.turret.rotation.y = Math.sin(this.time * 0.4 + rec.obj.position.x) * 1.2;
       if (rec.pop > 0) {
         rec.pop = Math.max(0, rec.pop - dt * 2.5);
@@ -703,9 +699,10 @@ export class VillageView {
 }
 
 function findParts(obj) {
-  const parts = {};
+  const parts = { flags: [] };
   obj.traverse((o) => {
-    if (o.name && !parts[o.name]) parts[o.name] = o;
+    if (o.name === 'flag') parts.flags.push(o);
+    else if (o.name && !parts[o.name]) parts[o.name] = o;
   });
   if (parts.turret) parts.idleTurret = true;
   return parts;

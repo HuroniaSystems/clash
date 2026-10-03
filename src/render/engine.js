@@ -51,7 +51,8 @@ export class Engine {
     const sun = new THREE.DirectionalLight('#fff4dc', 2.1);
     sun.position.set(-18, 40, 14);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    const big = Math.min(window.screen?.width || 1920, window.screen?.height || 1080) > 700;
+    sun.shadow.mapSize.set(big ? 4096 : 2048, big ? 4096 : 2048);
     const s = 34;
     Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 120 });
     sun.shadow.bias = -0.0008;

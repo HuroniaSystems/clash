@@ -1,6 +1,6 @@
 # Clash of Villages
 
-A Clash of Clans style village builder and battle game that runs in the browser. Three.js renders the 3D world from an isometric camera. All models are generated in code as chunky low-poly medieval pieces, so the game ships no art assets.
+A Clash of Clans style village builder and battle game that runs in the browser. Three.js renders the 3D world from an isometric camera. All models, textures, sound effects and music are generated in code, so the game ships no art or audio assets.
 
 ## Run it
 
@@ -53,13 +53,27 @@ Progress saves to `localStorage` every few seconds. Time keeps passing while you
 - You earn stars (50%, Town Hall, 100%), loot that scales with the damage you do, trophies and gems.
 - From Town Hall 2, raiders attack your village. Watch the defense live or let it resolve on its own. Shields protect you after a heavy loss.
 
+**Art**
+- Every building changes look as it levels: wood becomes stone, then gains towers, banners and gold trim.
+- Stone, brick, plank, shingle, thatch and cobble textures are drawn on canvases at startup and mapped onto the models.
+- Low and recessed surfaces get baked shading, and each building casts a soft contact shadow.
+
+**Audio**
+- Web Audio synthesis with no sound files:
+  - UI: bubbly button pops, panel swooshes and error buzzes.
+  - Village: coin and elixir collection jingles, hammering, completion fanfares and villager greetings.
+  - Battle: swords, arrows, cannon booms, mortar whistles, rockets, magic zaps, crumbling buildings, a war horn, star chimes and victory/defeat stingers. Each is panned by where it happens on screen.
+  - Music: a lute-and-flute village theme and a drum-driven battle theme, plus birdsong in the village.
+- The speaker button mutes everything. Settings (tap your name) has music and effects volume sliders.
+
 ## Code layout
 
 ```
 src/data/       building, troop and name tables
 src/core/       pure game rules (economy, villagers, army, raids, save state)
 src/battle/     battle simulation, A* pathfinding, enemy village generator
-src/render/     Three.js engine, terrain, procedural models, village + battle views
+src/render/     Three.js engine, terrain, textures, building + character models, views
+src/audio/      Web Audio synths, sound effect recipes, music sequencer
 src/ui/         HUD, action bar, modals (DOM + CSS)
 test/           Vitest tests for rules and simulation
 ```

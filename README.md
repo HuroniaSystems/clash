@@ -57,6 +57,7 @@ Progress saves to `localStorage` every few seconds. Time keeps passing while you
 - Every building changes look as it levels: wood becomes stone, then gains towers, banners and gold trim.
 - Stone, brick, plank, shingle, thatch and cobble textures are drawn on canvases at startup and mapped onto the models.
 - Low and recessed surfaces get baked shading, and each building casts a soft contact shadow.
+- Troops and villagers share a jointed rig: a big expressive head (eyes, brows, nose, mouth), arms with hands, and legs with boots. Each troop has its own gear: swords, bows and quivers, beards, loot sacks, skeleton bombs, a striped balloon and a winged dragon. Gear upgrades at troop levels 3 and 5, for example horned helmets, golden bows, iron gauntlets and purple robes.
 
 **Audio**
 - Web Audio synthesis with no sound files:

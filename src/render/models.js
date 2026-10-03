@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { mat, mesh, box, cyl, cone, sphere, rock, bake } from './kit.js';
+import { detailedTroop, personModel, attachRig } from './troops.js';
 
 export { mat, box } from './kit.js';
 export { buildingModel, cachedWall as wallModel, cachedSite as constructionSite } from './buildings.js';
@@ -67,151 +68,17 @@ export function obstacleModel(type, seed = 0) {
 }
 
 // ---------- characters ----------
-// Simple chunky humanoid. Returns a group with userData.rig for animation.
-export function humanoid({ skin, shirt, pants, hair, scale = 1, hairStyle = 0, beard = null, bareChest = false, hat = null }) {
-  const g = new THREE.Group();
-  const body = new THREE.Group();
-  const legL = new THREE.Group();
-  const legR = new THREE.Group();
-  legL.add(box(0.13, 0.3, 0.14, pants, 0, -0.3, 0));
-  legR.add(box(0.13, 0.3, 0.14, pants, 0, -0.3, 0));
-  legL.position.set(-0.08, 0.3, 0);
-  legR.position.set(0.08, 0.3, 0);
-  body.add(box(0.34, 0.34, 0.22, bareChest ? skin : shirt, 0, 0.3, 0));
-  body.add(box(0.36, 0.06, 0.24, pants, 0, 0.3, 0));
-  body.add(box(0.26, 0.26, 0.26, skin, 0, 0.66, 0));
-  if (hair) {
-    if (hairStyle === 1) body.add(box(0.3, 0.12, 0.3, hair, 0, 0.86, 0));
-    else if (hairStyle === 2) body.add(box(0.3, 0.22, 0.14, hair, 0, 0.72, -0.1));
-    else body.add(box(0.3, 0.08, 0.3, hair, 0, 0.88, 0));
-  }
-  if (beard) body.add(box(0.27, 0.12, 0.08, beard, 0, 0.6, 0.13));
-  if (hat) body.add(cyl(0.18, 0.2, 0.12, hat, 0, 0.9, 0, 8));
-  body.add(box(0.05, 0.05, 0.02, '#1a1a1a', -0.06, 0.72, 0.135));
-  body.add(box(0.05, 0.05, 0.02, '#1a1a1a', 0.06, 0.72, 0.135));
-  const armL = new THREE.Group();
-  const armR = new THREE.Group();
-  armL.add(box(0.1, 0.3, 0.1, bareChest ? skin : shirt, 0, -0.28, 0));
-  armR.add(box(0.1, 0.3, 0.1, bareChest ? skin : shirt, 0, -0.28, 0));
-  armL.position.set(-0.23, 0.6, 0);
-  armR.position.set(0.23, 0.6, 0);
-  body.add(armL, armR);
-  body.position.y = 0.3;
-  g.add(body, legL, legR);
-  g.scale.setScalar(scale);
-  g.userData.rig = { body, legL, legR, armL, armR };
-  return g;
+// Detailed characters live in troops.js.
+export function humanoid(opts) {
+  return attachRig(personModel({ ...opts, shirt: opts.bareChest ? opts.skin : opts.shirt, scale: opts.scale ?? 0.62 }));
 }
 
-function weapon(rig, part) {
-  rig.armR.add(part);
-}
-
-export function troopModel(type) {
-  let g;
-  switch (type) {
-    case 'barbarian': {
-      g = humanoid({ skin: '#f1c27d', shirt: '#f1c27d', pants: '#7a4a22', hair: '#f2c437', bareChest: true, beard: '#f2c437', scale: 0.85, hairStyle: 1 });
-      const sword = box(0.06, 0.55, 0.1, '#d8d8e0', 0, -0.75, 0.12);
-      sword.rotation.x = 1.3;
-      weapon(g.userData.rig, sword);
-      break;
-    }
-    case 'archer': {
-      g = humanoid({ skin: '#f1c27d', shirt: '#3c8d3c', pants: '#2e5e2e', hair: '#e0459a', scale: 0.8, hairStyle: 2 });
-      const bow = mesh(cachedGeo('bow', () => new THREE.TorusGeometry(0.25, 0.025, 4, 8, Math.PI)), C.woodDark);
-      bow.position.set(0, -0.4, 0.12);
-      bow.rotation.z = Math.PI / 2;
-      g.userData.rig.armL.add(bow);
-      break;
-    }
-    case 'giant': {
-      g = humanoid({ skin: '#f1c27d', shirt: '#8a5a2b', pants: '#5a3a1a', hair: '#e2732a', beard: '#e2732a', scale: 1.5 });
-      break;
-    }
-    case 'goblin': {
-      g = humanoid({ skin: '#6fcf4a', shirt: '#6fcf4a', pants: '#7a4a22', hair: null, bareChest: true, scale: 0.65 });
-      const { body } = g.userData.rig;
-      const e1 = cone(0.06, 0.22, '#5cb83a', -0.17, 0.66, 0, 4);
-      e1.rotation.z = 1.2;
-      const e2 = cone(0.06, 0.22, '#5cb83a', 0.17, 0.66, 0, 4);
-      e2.rotation.z = -1.2;
-      body.add(e1, e2);
-      body.add(box(0.12, 0.12, 0.1, C.gold, 0, 0.25, -0.17));
-      break;
-    }
-    case 'wallbreaker': {
-      g = humanoid({ skin: '#ecebe4', shirt: '#ecebe4', pants: '#ecebe4', hair: null, bareChest: true, scale: 0.7 });
-      const bomb = sphere(0.24, C.ironDark, 0, 0.55, -0.15, 8, 6);
-      g.userData.rig.body.add(bomb);
-      g.userData.rig.body.add(cyl(0.03, 0.03, 0.15, C.woodLight, 0, 0.78, -0.15, 4));
-      g.userData.rig.body.add(sphere(0.05, '#ffcc33', 0, 0.95, -0.15, 5, 4, { emissive: '#ff8800' }));
-      break;
-    }
-    case 'wizard': {
-      g = humanoid({ skin: '#f1c27d', shirt: '#3b5bd6', pants: '#2a3f9a', hair: null, beard: '#ddd', scale: 0.85 });
-      const { body } = g.userData.rig;
-      body.add(cone(0.22, 0.45, '#2a3f9a', 0, 0.78, 0, 8));
-      const staffOrb = sphere(0.08, '#ff9d2e', 0, -0.5, 0.1, 6, 4, { emissive: '#aa4400' });
-      weapon(g.userData.rig, staffOrb);
-      break;
-    }
-    case 'balloon': {
-      g = new THREE.Group();
-      const b = sphere(0.7, '#5a4632', 0, 1.15, 0, 10, 8);
-      g.add(b);
-      g.add(cyl(0.72, 0.72, 0.12, '#c8402f', 0, 1.0, 0, 10));
-      g.add(box(0.5, 0.3, 0.5, C.woodDark, 0, 0, 0));
-      for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) g.add(box(0.02, 0.6, 0.02, '#ccc', x, 0.3, z));
-      g.add(sphere(0.12, '#ecebe4', 0, 0.4, 0, 6, 4));
-      g.add(sphere(0.15, C.ironDark, 0, -0.1, 0, 6, 4));
-      g.userData.rig = null;
-      break;
-    }
-    case 'dragon': {
-      g = new THREE.Group();
-      const red = '#d6402a';
-      g.add(sphereScaled(0.55, red, [1, 0.8, 1.4], 0, 0, 0));
-      g.add(sphere(0.32, red, 0, 0.35, 0.75, 8, 6));
-      g.add(cone(0.06, 0.25, '#f2e2b0', -0.15, 0.55, 0.7, 4));
-      g.add(cone(0.06, 0.25, '#f2e2b0', 0.15, 0.55, 0.7, 4));
-      const tail = cone(0.2, 0.9, red, 0, 0, 0, 6);
-      tail.rotation.x = -Math.PI / 2;
-      tail.position.set(0, 0, -0.95);
-      g.add(tail);
-      const wingL = new THREE.Group();
-      const wingR = new THREE.Group();
-      wingL.add(box(1.1, 0.04, 0.7, '#a82a1a', -0.55, 0, 0));
-      wingR.add(box(1.1, 0.04, 0.7, '#a82a1a', 0.55, 0, 0));
-      wingL.position.set(-0.3, 0.2, 0);
-      wingR.position.set(0.3, 0.2, 0);
-      g.add(wingL, wingR);
-      g.userData.rig = { wingL, wingR };
-      g.scale.setScalar(1.1);
-      break;
-    }
-    default:
-      g = humanoid({ skin: '#f1c27d', shirt: '#888', pants: '#444', hair: '#333' });
-  }
-  return g;
-}
-
-function sphereScaled(r, color, s, x, y, z) {
-  const m = sphere(r, color, x, y, z, 10, 8);
-  m.scale.set(...s);
-  return m;
+export function troopModel(type, level = 1) {
+  return detailedTroop(type, level);
 }
 
 export function villagerModel(look, jobColor = null) {
-  return humanoid({
-    skin: look.skin,
-    shirt: look.shirt,
-    pants: look.pants,
-    hair: look.hair,
-    hairStyle: look.hairStyle,
-    hat: jobColor,
-    scale: 0.62,
-  });
+  return attachRig(personModel({ skin: look.skin, shirt: look.shirt, pants: look.pants, hair: look.hair, hairStyle: look.hairStyle, hat: jobColor, scale: 0.6 }));
 }
 
 // ---------- projectiles ----------

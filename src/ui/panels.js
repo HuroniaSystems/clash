@@ -272,7 +272,7 @@ export function armyPanel(ui) {
         bar(cap ? used / cap : 0, 'army'),
         h('div', { class: 'muted' }, `Training speed x${eco.trainSpeed(s).toFixed(2)} (Barracks and Drill Sergeants). Captains boost damage by +${pct(eco.troopDamageMult(s) - 1)}.`));
       const current = h('div', { class: 'mini-row' },
-        Object.entries(s.army.troops).filter(([, n]) => n > 0).map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t), alt: '' }), h('span', {}, `x${n}`))),
+        Object.entries(s.army.troops).filter(([, n]) => n > 0).map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t, ui.state.research.levels[t]), alt: '' }), h('span', {}, `x${n}`))),
         Object.keys(s.army.troops).length ? null : h('div', { class: 'muted' }, 'No troops yet.'));
       let queue = null;
       if (s.army.queue.length) {
@@ -289,7 +289,7 @@ export function armyPanel(ui) {
           h('div', { class: 'section-title' }, `Training (${left === Infinity ? 'paused - barracks busy' : fmtTime(left)})`),
           h('div', { class: 'mini-row' },
             groups.map((g, gi) => h('div', { class: `mini q ${gi === 0 ? 'active' : ''}` },
-              h('img', { src: troopPortrait(g.type), alt: '' }),
+              h('img', { src: troopPortrait(g.type, ui.state.research.levels[g.type]), alt: '' }),
               h('span', {}, `x${g.count}`),
               gi === 0 ? bar(1 - s.army.queue[0].remaining / s.army.queue[0].total, 'progress') : null,
               h('button', { class: 'mini-x', onclick: () => ui.game.cancelTrain(g.last) }, svg('cancel')))),
@@ -302,7 +302,7 @@ export function armyPanel(ui) {
         const locked = !army.isUnlocked(s, t);
         grid.append(h('button', { class: `card troop ${blocker ? 'dim' : ''} ${locked ? 'locked' : ''}`, onclick: () => ui.game.train(t) },
           h('div', { class: 'card-name' }, T.name, h('span', { class: 'lvl-pill' }, `Lv ${army.troopLevel(s, t)}`)),
-          h('img', { class: 'card-img', src: troopPortrait(t), alt: T.name, draggable: 'false' }),
+          h('img', { class: 'card-img', src: troopPortrait(t, ui.state.research.levels[t]), alt: T.name, draggable: 'false' }),
           h('div', { class: 'card-meta' }, h('span', {}, `Space ${T.housing}`), h('span', {}, fmtTime(T.time))),
           h('div', { class: 'card-foot' }, locked ? h('div', { class: 'card-lock' }, `Barracks Lv ${T.unlock}`) : costEl(army.troopCost(s, t), s))));
       }
@@ -337,7 +337,7 @@ export function labPanel(ui) {
         const maxed = lvl >= T.hp.length;
         grid.append(h('button', { class: `card troop ${blocker ? 'dim' : ''}`, onclick: () => (blocker ? ui.toast(blocker, 'warn') : ui.game.research(t)) },
           h('div', { class: 'card-name' }, T.name),
-          h('img', { class: 'card-img', src: troopPortrait(t), alt: T.name, draggable: 'false' }),
+          h('img', { class: 'card-img', src: troopPortrait(t, ui.state.research.levels[t]), alt: T.name, draggable: 'false' }),
           h('div', { class: 'card-meta' }, h('span', {}, maxed ? `Lv ${lvl} (max)` : `Lv ${lvl} > ${lvl + 1}`), maxed ? null : h('span', {}, fmtTime(T.researchTime[lvl]))),
           h('div', { class: 'card-stats' }, h('span', {}, `HP ${T.hp[lvl - 1]}`, maxed ? null : h('b', {}, ` ${T.hp[lvl]}`)), h('span', {}, `DPS ${T.dps[lvl - 1]}`, maxed ? null : h('b', {}, ` ${T.dps[lvl]}`))),
           h('div', { class: 'card-foot' }, maxed ? h('div', { class: 'card-lock' }, 'Maxed') : blocker && blocker !== 'Not enough elixir' ? h('div', { class: 'card-lock' }, blocker) : costEl(army.researchCost(s, t), s))));
@@ -361,7 +361,7 @@ export function attackPanel(ui) {
         h('div', { class: 'attack-card' },
           h('div', { class: 'attack-title' }, 'Multiplayer raid'),
           h('p', { class: 'muted' }, 'Find a rival village, scout its defenses and deploy your troops at the edges. Destroy 50% for a star, the Town Hall for another, and everything for the third.'),
-          h('div', { class: 'mini-row' }, troops.map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t), alt: '' }), h('span', {}, `x${n}`))), troops.length ? null : h('div', { class: 'muted' }, 'You have no troops.')),
+          h('div', { class: 'mini-row' }, troops.map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t, ui.state.research.levels[t]), alt: '' }), h('span', {}, `x${n}`))), troops.length ? null : h('div', { class: 'muted' }, 'You have no troops.')),
           h('div', { class: 'muted' }, `Army: ${housing}/${eco.armyCap(s)}`),
           h('button', { class: `btn big yellow ${housing ? '' : 'dim'}`, onclick: () => ui.game.findMatch() }, 'Find a Match ', costEl(cost, s))),
         h('div', { class: 'attack-side' },
@@ -413,7 +413,7 @@ export function resultPanel(ui, r, onDone) {
         if (r.wasted && r.wasted.gold + r.wasted.elixir > 0) rows.push(h('div', { class: 'muted' }, 'Some loot was lost because your storages are full.'));
         const used = Object.entries(r.used || {}).filter(([, n]) => n > 0);
         rows.push(h('div', { class: 'section-title' }, 'Troops used'));
-        rows.push(h('div', { class: 'mini-row center' }, used.map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t), alt: '' }), h('span', {}, `x${n}`))), used.length ? null : h('div', { class: 'muted' }, 'None')));
+        rows.push(h('div', { class: 'mini-row center' }, used.map(([t, n]) => h('div', { class: 'mini' }, h('img', { src: troopPortrait(t, ui.state.research.levels[t]), alt: '' }), h('span', {}, `x${n}`))), used.length ? null : h('div', { class: 'muted' }, 'None')));
       } else {
         rows.push(h('div', { class: 'result-loot' }, h('span', { class: 'lost' }, '-', fmtNum(r.lost.gold), icon('gold')), h('span', { class: 'lost' }, '-', fmtNum(r.lost.elixir), icon('elixir'))));
         if (ui.state.shield > 0) rows.push(h('div', { class: 'muted' }, `You received a shield for ${fmtTime(ui.state.shield)}.`));

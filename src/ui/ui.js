@@ -379,7 +379,7 @@ export class UI {
       return h(
         'button',
         { class: `troop-card ${v.selectedTroop === t ? 'sel' : ''} ${n === 0 ? 'empty' : ''}`, 'data-key': t, onclick: () => { v.selectedTroop = t; this.updateBattleHud(); } },
-        h('img', { src: troopPortrait(t), alt: TROOPS[t].name, draggable: 'false' }),
+        h('img', { src: troopPortrait(t, this.state.research.levels[t]), alt: TROOPS[t].name, draggable: 'false' }),
         h('div', { class: 'tc-count' }, `x${n}`),
         h('div', { class: 'tc-lvl' }, String(this.state.research.levels[t] || 1)),
       );

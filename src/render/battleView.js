@@ -9,6 +9,7 @@ import { Effects } from './effects.js';
 import { hpBar } from './overlay.js';
 import { fmtNum } from '../util/format.js';
 import { sound } from '../audio/sound.js';
+import { animateRig } from './troops.js';
 
 const MELEE_SOUND = { barbarian: 'sword', giant: 'punch', goblin: 'punch' };
 const TROOP_FIRE_SOUND = { arrow: 'arrow', fireball: 'fireball', bomb: null };
@@ -353,7 +354,7 @@ export class BattleView {
       alive.add(t.id);
       let rec = this.tobjs.get(t.id);
       if (!rec) {
-        const mesh = troopModel(t.type);
+        const mesh = troopModel(t.type, t.level);
         if (this.mode === 'defense') mesh.traverse((o) => o.isMesh && (o.castShadow = true));
         this.root.add(mesh);
         rec = { mesh, phase: Math.random() * 6 };
@@ -364,23 +365,7 @@ export class BattleView {
       const bob = t.air ? Math.sin(rec.phase * 2) * 0.15 : 0;
       m.position.copy(W(t.x, t.y, t.z + bob));
       m.rotation.y = Math.PI / 2 - t.facing;
-      const rig = m.userData.rig;
-      if (rig?.legL) {
-        if (t.moving) {
-          const s = Math.sin(rec.phase * 12 * (t.speed / 1.8));
-          rig.legL.rotation.x = s * 0.7;
-          rig.legR.rotation.x = -s * 0.7;
-          rig.armL.rotation.x = -s * 0.5;
-          rig.armR.rotation.x = s * 0.5;
-        } else if (t.attacking) {
-          rig.legL.rotation.x = rig.legR.rotation.x = 0;
-          rig.armR.rotation.x = -0.4 - t.attackPulse * 1.8;
-          rig.armL.rotation.x = -0.3;
-        }
-      } else if (rig?.wingL) {
-        rig.wingL.rotation.z = Math.sin(rec.phase * 6) * 0.6;
-        rig.wingR.rotation.z = -Math.sin(rec.phase * 6) * 0.6;
-      }
+      animateRig(m.userData.rig, t.moving ? 'walk' : t.attacking ? 'attack' : 'idle', rec.phase, { speed: t.speed / 1.8, pulse: t.attackPulse });
       const key = `t${t.id}`;
       if (t.hp < t.maxHp) {
         let it = this.hpbars.get(key);

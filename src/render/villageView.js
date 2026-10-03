@@ -12,6 +12,7 @@ import { hpBar } from './overlay.js';
 import { levelDef, storageCap, occupancy, canPlace, findBuilding } from '../core/economy.js';
 import { fmtTime } from '../util/format.js';
 import { icon } from '../ui/dom.js';
+import { animateRig } from './troops.js';
 
 const JOB_HAT = {
   mining: '#f2c437',
@@ -299,25 +300,7 @@ export class VillageView {
     const m = a.mesh;
     m.position.set(a.x - GRID / 2, 0, a.y - GRID / 2);
     m.rotation.y = Math.PI / 2 - a.facing;
-    const rig = m.userData.rig;
-    if (!rig) return;
-    if (a.moving) {
-      const s = Math.sin(a.phase * 10);
-      rig.legL.rotation.x = s * 0.6;
-      rig.legR.rotation.x = -s * 0.6;
-      rig.armL.rotation.x = -s * 0.5;
-      rig.armR.rotation.x = s * 0.5;
-      rig.body.position.y = 0.3 + Math.abs(s) * 0.03;
-    } else if (a.state === 'work') {
-      rig.legL.rotation.x = rig.legR.rotation.x = 0;
-      rig.armR.rotation.x = -1.2 - Math.sin(a.phase * 7) * 0.9;
-      rig.armL.rotation.x = -0.4;
-      rig.body.position.y = 0.3;
-    } else {
-      rig.legL.rotation.x = rig.legR.rotation.x = 0;
-      rig.armL.rotation.x = rig.armR.rotation.x = Math.sin(a.phase * 1.5) * 0.05;
-      rig.body.position.y = 0.3 + Math.sin(a.phase * 2) * 0.01;
-    }
+    animateRig(m.userData.rig, a.moving ? 'walk' : a.state === 'work' ? 'work' : 'idle', a.phase, { speed: 0.85 });
   }
 
   // builder figures hammering at construction sites
@@ -330,7 +313,10 @@ export class VillageView {
       let w = this.builders.get(b.id);
       if (!w) {
         const mesh = humanoid({ skin: '#f1c27d', shirt: '#e07a2a', pants: '#3b3b55', hair: null, hat: '#f2c437', scale: 0.7, beard: '#6e4320' });
-        mesh.userData.rig.armR.add(box(0.06, 0.06, 0.3, '#5a5d66', 0, -0.45, 0.12));
+        const hammer = new THREE.Group();
+        hammer.add(box(0.04, 0.04, 0.26, '#8a5426', 0, -0.02, 0.08), box(0.09, 0.08, 0.12, '#5a5d66', 0, -0.04, 0.22));
+        hammer.position.set(0, -0.32, 0.02);
+        mesh.userData.rig.armR.add(hammer);
         this.root.add(mesh);
         w = { mesh, phase: Math.random() * 5 };
         this.builders.set(b.id, w);
@@ -340,7 +326,7 @@ export class VillageView {
       w.mesh.position.copy(p);
       w.mesh.rotation.y = Math.PI + Math.PI / 4;
       w.phase += dt;
-      w.mesh.userData.rig.armR.rotation.x = -1.4 - Math.sin(w.phase * 9) * 0.9;
+      animateRig(w.mesh.userData.rig, 'work', w.phase * 1.15);
     }
     for (const [id, w] of this.builders) {
       if (!active.has(id)) {
@@ -369,7 +355,7 @@ export class VillageView {
           const center = centerOf(c);
           const shown = perCamp[ci].slice(0, 24);
           shown.forEach((t, i) => {
-            const m = troopModel(t);
+            const m = troopModel(t, state.research.levels[t] || 1);
             const ring = i < 8 ? 0.85 : i < 18 ? 1.35 : 0.45;
             const k = i < 8 ? i / 8 : i < 18 ? (i - 8) / 10 : (i - 18) / 6;
             const a = k * Math.PI * 2 + ci;
@@ -384,12 +370,7 @@ export class VillageView {
     }
     for (const m of this.camp.group.children) {
       m.userData.phase += dt;
-      const rig = m.userData.rig;
-      if (rig?.body) rig.body.position.y = 0.3 + Math.abs(Math.sin(m.userData.phase * 2)) * 0.03;
-      if (rig?.wingL) {
-        rig.wingL.rotation.z = Math.sin(m.userData.phase * 4) * 0.5;
-        rig.wingR.rotation.z = -Math.sin(m.userData.phase * 4) * 0.5;
-      }
+      animateRig(m.userData.rig, 'idle', m.userData.phase);
     }
   }
 

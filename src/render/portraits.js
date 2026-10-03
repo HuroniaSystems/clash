@@ -50,11 +50,12 @@ export function buildingPortrait(type, level = 1) {
   return cache.get(key);
 }
 
-export function troopPortrait(type) {
-  const key = `t:${type}`;
+export function troopPortrait(type, level = 1) {
+  const tier = level >= 5 ? 5 : level >= 3 ? 3 : 1;
+  const key = `t:${type}:${tier}`;
   if (!cache.has(key)) {
     try {
-      const obj = troopModel(type);
+      const obj = troopModel(type, tier);
       obj.rotation.y = 0.2;
       cache.set(key, snapshot(obj, 0.95));
     } catch {

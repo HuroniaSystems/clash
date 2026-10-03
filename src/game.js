@@ -18,6 +18,12 @@ import {
   findMatch, makeAttackSim, applyAttackResult, matchCost, createRaid, makeDefenseSim, applyDefenseResult,
 } from './core/raids.js';
 import { fmtNum } from './util/format.js';
+import { sound } from './audio/sound.js';
+
+const SELECT_SOUND = {
+  cannon: 'metal', mortar: 'metal', airdefense: 'metal', wall: 'stone', townhall: 'stone', goldstorage: 'metal',
+  laboratory: 'magic', wizardtower: 'magic', elixircollector: 'magic', elixirstorage: 'magic',
+};
 
 export class Game {
   constructor({ viewport, overlay, ui }) {
@@ -34,6 +40,7 @@ export class Game {
     this.saveTimer = 0;
     this.ui = new UI(this, ui);
     this.view = new VillageView(this);
+    sound.playMusic('village');
     if (this.isNew) {
       this.ui.showIntro();
       saveState(this.state);
@@ -81,6 +88,11 @@ export class Game {
 
   select(pick) {
     if (this.placement) return;
+    if (pick?.kind === 'building') {
+      const b = eco.findBuilding(this.state, pick.id);
+      sound.play('select', { kind: SELECT_SOUND[b?.type] || 'wood' });
+    } else if (pick?.kind === 'villager') sound.play('villager');
+    else if (pick?.kind === 'obstacle') sound.play('select', { kind: 'wood' });
     this.selection = pick;
     this.ui.refresh();
   }
@@ -114,6 +126,7 @@ export class Game {
     const got = eco.collect(this.state, id);
     if (got > 0) {
       this.overlay.floatText(`+${fmtNum(got)}`, this.view.worldPosOf(id), res);
+      sound.play(res === 'gold' ? 'coin' : 'elixir', { amount: got, pan: this.panOf(this.view.worldPosOf(id)) });
       this.view.burst?.(id, res);
     } else {
       this.ui.toast(`Your ${res} storage is full`, 'warn');
@@ -129,6 +142,8 @@ export class Game {
     const events = [];
     const r = eco.startUpgrade(this.state, id, events);
     if (this.toastResult(r)) {
+      const b = eco.findBuilding(this.state, id);
+      sound.play(b?.upgrade ? 'build' : 'place');
       this.handleEvents(events);
       this.ui.closeModal();
     }
@@ -137,7 +152,10 @@ export class Game {
 
   finishNow(id) {
     const events = [];
-    if (eco.finishUpgradeWithGems(this.state, id, events)) this.handleEvents(events);
+    if (eco.finishUpgradeWithGems(this.state, id, events)) {
+      sound.play('gem');
+      this.handleEvents(events);
+    }
     else this.ui.toast('Not enough gems', 'warn');
     this.ui.refresh();
   }
@@ -195,12 +213,15 @@ export class Game {
         return;
       }
       this.selection = { kind: 'building', id: pl.moveId };
+      sound.play('place');
       this.cancelPlacement();
       return;
     }
     const events = [];
     const r = eco.placeNew(this.state, pl.type, pl.x, pl.y, events);
     if (!this.toastResult(r)) return;
+    sound.play('place');
+    if (r.building.upgrade) sound.play('build', { delay: 0.25 });
     this.handleEvents(events);
     if (pl.type === 'wall' && !eco.buyBlocker(this.state, 'wall')) {
       // keep placing walls along the same line
@@ -234,6 +255,8 @@ export class Game {
     const r = eco.removeObstacle(this.state, id);
     if (this.toastResult(r)) {
       this.ui.toast(`Cleared! Found ${r.gems} gems`, 'good');
+      sound.play('chop');
+      sound.play('gem', { delay: 0.6 });
       this.selection = null;
     }
     this.ui.refresh();
@@ -248,7 +271,7 @@ export class Game {
 
   train(type) {
     const r = army.queueTroop(this.state, type);
-    this.toastResult(r);
+    if (this.toastResult(r)) sound.play('train');
     this.ui.refresh();
   }
 
@@ -260,18 +283,22 @@ export class Game {
   finishTrain() {
     const ev = [];
     if (!army.finishTrainingWithGems(this.state, ev)) this.ui.toast('Not enough gems', 'warn');
+    else sound.play('gem');
     this.ui.refresh();
   }
 
   research(type) {
     const r = army.startResearch(this.state, type);
-    this.toastResult(r);
+    if (this.toastResult(r)) sound.play('research');
     this.ui.refresh();
   }
 
   finishResearch() {
     const ev = [];
-    if (army.finishResearchWithGems(this.state, ev)) this.handleEvents(ev);
+    if (army.finishResearchWithGems(this.state, ev)) {
+      sound.play('gem');
+      this.handleEvents(ev);
+    }
     else this.ui.toast('Not enough gems', 'warn');
     this.ui.refresh();
   }
@@ -331,6 +358,8 @@ export class Game {
     this.selection = null;
     this.mode = 'battle';
     this.view = new BattleView(this, opts);
+    sound.playMusic('battle');
+    if (opts.mode === 'defense') sound.play('horn');
     this.engine.target.set(0, 0, 0);
     this.engine.setZoom(1.15);
     this.ui.refresh();
@@ -362,6 +391,9 @@ export class Game {
       summary = { mode: 'defense', name: v.raid.name, ...res };
     }
     saveState(this.state);
+    const won = summary.mode === 'attack' ? summary.stars > 0 : summary.won;
+    sound.duck(4.5, 0.15);
+    sound.play(won ? 'victory' : 'defeat');
     this.ui.showBattleResult(summary, () => {
       this.battleDone = false;
       this.enterVillage();
@@ -374,8 +406,16 @@ export class Game {
     this.mode = 'village';
     this.battleDone = false;
     this.view = new VillageView(this);
+    sound.playMusic('village');
     this.ui.closeModal();
     this.ui.refresh();
+  }
+
+  // Stereo pan (-1..1) for a world position based on where it is on screen.
+  panOf(pos) {
+    if (!pos) return 0;
+    const s = this.engine.worldToScreen(pos);
+    return Math.max(-0.8, Math.min(0.8, (s.x / this.engine.width) * 2 - 1));
   }
 
   watchRaid() {
@@ -410,18 +450,24 @@ export class Game {
       if (quiet && e.type !== 'playerLevel') continue;
       switch (e.type) {
         case 'built':
+          sound.play('complete');
           this.ui.toast(`${BUILDINGS[e.building.type].name} ${e.building.level > 1 ? `upgraded to level ${e.building.level}` : 'completed'}!`, 'good');
           break;
         case 'villagerJoined':
+          sound.play('chime');
+          sound.play('villager', { delay: 0.35 });
           this.ui.toast(`${e.villager.name} has moved into your village!`, 'good');
           break;
         case 'villagerLevel':
+          sound.play('chime');
           this.ui.toast(`${e.villager.name} reached level ${e.villager.level}`, 'info');
           break;
         case 'researched':
+          sound.play('complete');
           this.ui.toast(`${TROOPS[e.troop].name} upgraded to level ${e.level}!`, 'good');
           break;
         case 'playerLevel':
+          if (!quiet) sound.play('levelup', { delay: 0.4 });
           this.ui.toast(`You reached experience level ${e.level}!`, 'good');
           break;
         default:
@@ -444,6 +490,7 @@ export class Game {
         if (this.state.raidTimer <= 0) {
           this.state.raidTimer = RAID_INTERVAL;
           this.pendingRaid = { raid: createRaid(this.state), left: 25 };
+          sound.play('alarm');
           this.ui.refresh();
         }
       }
@@ -455,6 +502,7 @@ export class Game {
       saveState(this.state);
     }
     this.view.update(dt);
+    sound.update(dt, this.mode);
     this.overlay.update(dt);
     this.ui.update(dt);
     this.engine.render();

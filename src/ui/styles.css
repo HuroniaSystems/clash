@@ -1650,3 +1650,50 @@ table.stats td.up {
     height: 48px;
   }
 }
+
+/* ---------- sound controls ---------- */
+.mute-btn {
+  position: absolute;
+  top: 128px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  pointer-events: auto !important;
+}
+.mute-btn .svg-ico {
+  width: 24px;
+  height: 24px;
+}
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+}
+.slider span {
+  width: 70px;
+}
+.slider input {
+  flex: 1;
+  max-width: 280px;
+  accent-color: #5aa021;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+@media (max-width: 720px) {
+  .mute-btn {
+    top: 112px;
+    width: 38px;
+    height: 38px;
+  }
+}
+
+.mute-btn.in-battle {
+  top: auto;
+  bottom: 110px;
+  right: 14px;
+}

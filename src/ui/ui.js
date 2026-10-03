@@ -9,6 +9,7 @@ import { fmtNum, fmtTime, fmtClock } from '../util/format.js';
 import { troopPortrait } from '../render/portraits.js';
 import { h, icon, costEl, bar, svg, stars, avatar } from './dom.js';
 import * as panels from './panels.js';
+import { sound } from '../audio/sound.js';
 
 function swap(target, nodes) {
   const tmp = document.createElement('div');
@@ -95,9 +96,18 @@ export class UI {
     // ----- battle HUD -----
     this.bhud = h('div', { class: 'bhud' });
 
+    this.muteBtn = h('button', { class: 'round-btn small mute-btn', title: 'Sound', onclick: () => { sound.toggleMute(); this.renderMute(); } });
+    this.renderMute();
     this.toasts = h('div', { class: 'toasts' });
     this.modalRoot = h('div', { class: 'modal-root' });
-    r.append(this.hud, this.actionBar, this.placeBar, this.raidBanner, this.bhud, this.toasts, this.modalRoot);
+    r.append(this.hud, this.actionBar, this.placeBar, this.raidBanner, this.bhud, this.muteBtn, this.toasts, this.modalRoot);
+    // every button gets a click; buttons can opt into a different sound with data-sfx
+    r.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const name = b.dataset.sfx || (b.classList.contains('tab') ? 'tab' : 'click');
+      if (name !== 'none') sound.play(name);
+    }, true);
   }
 
   refresh() {
@@ -111,6 +121,7 @@ export class UI {
     const inVillage = game.mode === 'village';
     this.hud.classList.toggle('hidden', !inVillage);
     this.bhud.classList.toggle('hidden', inVillage);
+    this.muteBtn.classList.toggle('in-battle', !inVillage);
 
     if (this.dirty) {
       this.dirty = false;
@@ -399,7 +410,12 @@ export class UI {
   }
 
   // ---------- toasts ----------
+  renderMute() {
+    this.muteBtn.replaceChildren(svg(sound.settings.muted ? 'mute' : 'speaker'));
+  }
+
   toast(msg, kind = 'info', secs = 2.6) {
+    if (kind === 'warn') sound.play('error');
     const t = h('div', { class: `toast ${kind}` }, msg);
     this.toasts.appendChild(t);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();
@@ -410,6 +426,7 @@ export class UI {
   // ---------- modals ----------
   // panel: { title, render(): Node, live?: bool, wide?: bool, onClose?: fn }
   openModal(panel) {
+    if (!this.modal) sound.play('open');
     this.modal = panel;
     this.renderModal(true);
   }
@@ -436,7 +453,7 @@ export class UI {
     const box = h(
       'div',
       { class: `modal ${m.wide ? 'wide' : ''} ${m.cls || ''}`, onclick: (e) => e.stopPropagation() },
-      h('div', { class: 'modal-head' }, h('div', { class: 'modal-title' }, typeof m.title === 'function' ? m.title() : m.title), m.noClose ? null : h('button', { class: 'modal-x', onclick: () => this.closeModal() }, svg('cancel'))),
+      h('div', { class: 'modal-head' }, h('div', { class: 'modal-title' }, typeof m.title === 'function' ? m.title() : m.title), m.noClose ? null : h('button', { class: 'modal-x', 'data-sfx': 'none', onclick: () => this.closeModal() }, svg('cancel'))),
       body,
     );
     root.append(h('div', { class: 'modal-backdrop', onclick: () => !m.noClose && this.closeModal() }), box);
@@ -445,6 +462,7 @@ export class UI {
 
   closeModal() {
     const m = this.modal;
+    if (m) sound.play('close');
     this.modal = null;
     this.renderModal();
     m?.onClose?.();

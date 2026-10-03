@@ -8,6 +8,11 @@ import { buildingModel, wallModel, rubble, troopModel, projectileModel } from '.
 import { Effects } from './effects.js';
 import { hpBar } from './overlay.js';
 import { fmtNum } from '../util/format.js';
+import { sound } from '../audio/sound.js';
+
+const MELEE_SOUND = { barbarian: 'sword', giant: 'punch', goblin: 'punch' };
+const TROOP_FIRE_SOUND = { arrow: 'arrow', fireball: 'fireball', bomb: null };
+const DEF_FIRE_SOUND = { ball: 'cannon', arrow: 'arrow', shell: 'mortar', rocket: 'rocket', orb: 'zap' };
 
 const W = (x, y, h = 0) => new THREE.Vector3(x - GRID / 2, h, y - GRID / 2);
 
@@ -177,9 +182,24 @@ export class BattleView {
     }
   }
 
+  sfx(name, x, y, o = {}) {
+    if (!name) return;
+    const s = this.engine.worldToScreen(W(x, y, 0));
+    const off = s.x < -80 || s.x > this.engine.width + 80 || s.y < -80 || s.y > this.engine.height + 80;
+    const pan = Math.max(-0.85, Math.min(0.85, (s.x / this.engine.width) * 2 - 1));
+    sound.play(name, { pan, volume: (o.volume ?? 1) * (off ? 0.4 : 1), ...o });
+  }
+
   handleEvents() {
     const evs = this.sim.events;
+    const quiet = this.speed > 4;
+    const stars = this.sim.stars();
+    if (stars > (this.lastStars || 0)) {
+      this.lastStars = stars;
+      sound.play('star');
+    }
     for (const e of evs) {
+      if (!quiet) this.eventSound(e);
       switch (e.type) {
         case 'deploy': {
           const p = W(e.troop.x, e.troop.y, 0.2);
@@ -238,6 +258,45 @@ export class BattleView {
       }
     }
     evs.length = 0;
+  }
+
+  eventSound(e) {
+    switch (e.type) {
+      case 'deploy':
+        if (this.mode === 'attack' && !this.hornPlayed) {
+          this.hornPlayed = true;
+          sound.play('horn');
+        }
+        this.sfx('deploy', e.troop.x, e.troop.y, { troop: e.troop.type, volume: this.mode === 'attack' ? 1 : 0.6 });
+        break;
+      case 'melee':
+        this.sfx(MELEE_SOUND[e.troop.type] || 'smallHit', e.x, e.y, { volume: 0.8 });
+        break;
+      case 'troopFire':
+        this.sfx(TROOP_FIRE_SOUND[e.kind], e.troop.x, e.troop.y, { volume: 0.8 });
+        break;
+      case 'defFire':
+        this.sfx(DEF_FIRE_SOUND[e.kind], e.building.cx, e.building.cy, { volume: 0.85 });
+        break;
+      case 'hit':
+        this.sfx(e.kind === 'arrow' ? 'arrowHit' : 'smallHit', e.x, e.y, { volume: 0.7 });
+        break;
+      case 'explode':
+        this.sfx(e.kind === 'orb' ? 'zap' : 'explosion', e.x, e.y, { size: Math.min(1.4, e.size || 1) });
+        break;
+      case 'destroyed':
+        if (e.building.isWall) this.sfx('wallBreak', e.building.cx, e.building.cy);
+        else this.sfx('destroy', e.building.cx, e.building.cy, { big: e.building.size >= 3 });
+        break;
+      case 'troopDied':
+        this.sfx('die', e.troop.x, e.troop.y, { volume: 0.8 });
+        break;
+      case 'loot':
+        if (Math.random() < 0.15) this.sfx('coin', e.building.cx, e.building.cy, { amount: 10, volume: 0.5 });
+        break;
+      default:
+        break;
+    }
   }
 
   syncBuildings(dt) {

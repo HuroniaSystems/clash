@@ -1,4 +1,9 @@
 import { Game } from './game.js';
+import { sound } from './audio/sound.js';
+
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(ev, () => sound.unlock(), { capture: true, passive: true });
+}
 
 const game = new Game({
   viewport: document.getElementById('viewport'),

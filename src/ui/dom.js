@@ -68,6 +68,8 @@ const PATHS = {
   swords: '<path d="M3 3 H7 L14 10 L12 12 L5 5 Z M21 3 H17 L10 10 L12 12 L19 5 Z M5 15 L9 19 L7 21 L5.5 19.5 L3.5 21.5 L2.5 20.5 L4.5 18.5 L3 17 Z M19 15 L15 19 L17 21 L18.5 19.5 L20.5 21.5 L21.5 20.5 L19.5 18.5 L21 17 Z M8 14 L10 16 L16 10 L14 8 Z"/>',
   hammer: '<path d="M3 6 L9 2 L13 4 L12 6 L20 14 L18 16 L10 8 L8 9 Z M14 16 L17 19 L15 21 L12 18 Z"/>',
   play: '<path d="M7 4 L20 12 L7 20 Z"/>',
+  speaker: '<path d="M3 9 H7 L13 4 V20 L7 15 H3 Z"/><path d="M16 8.5 C17.5 10 17.5 14 16 15.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M18.8 6 C21.6 9 21.6 15 18.8 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  mute: '<path d="M3 9 H7 L13 4 V20 L7 15 H3 Z"/><path d="M16 9 L22 15 M22 9 L16 15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
   skip: '<path d="M4 4 L13 12 L4 20 Z M12 4 L21 12 L12 20 Z"/>',
   locate: '<circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="11" y="1" width="2" height="6"/><rect x="11" y="17" width="2" height="6"/><rect x="1" y="11" width="6" height="2"/><rect x="17" y="11" width="6" height="2"/>',
 };

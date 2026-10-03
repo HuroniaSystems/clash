@@ -10,6 +10,7 @@ import { matchCost } from '../core/raids.js';
 import { fmtNum, fmtTime } from '../util/format.js';
 import { buildingPortrait, troopPortrait } from '../render/portraits.js';
 import { h, icon, costEl, bar, svg, stars, avatar, timeAgo } from './dom.js';
+import { sound } from '../audio/sound.js';
 
 export const skillName = (s) => SKILLS[s] || s;
 export const jobText = (state, v) => villagerJobText(state, v);
@@ -471,6 +472,13 @@ export function introPanel(ui) {
   };
 }
 
+function slider(label, key) {
+  const input = h('input', { type: 'range', min: '0', max: '100', value: String(Math.round(sound.settings[key] * 100)) });
+  input.addEventListener('input', () => sound.set(key, Number(input.value) / 100));
+  input.addEventListener('change', () => sound.play(key === 'music' ? 'chime' : 'coin'));
+  return h('label', { class: 'slider' }, h('span', {}, label), input);
+}
+
 export function settingsPanel(ui) {
   return {
     title: 'Settings',
@@ -480,6 +488,10 @@ export function settingsPanel(ui) {
       return h('div', { class: 'settings' },
         h('div', { class: 'section-title' }, 'Chief name'),
         h('div', { class: 'row-btns' }, input, h('button', { class: 'btn green', onclick: () => { ui.game.rename(input.value); ui.toast('Name saved', 'good'); } }, 'Save')),
+        h('div', { class: 'section-title' }, 'Sound'),
+        slider('Music', 'music'),
+        slider('Effects', 'sfx'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: sound.settings.muted ? true : null, onchange: (e) => { sound.set('muted', e.target.checked); ui.renderMute(); } }), ' Mute everything'),
         h('div', { class: 'section-title' }, 'How to play'),
         helpList(),
         h('div', { class: 'section-title' }, 'Danger zone'),

@@ -7,17 +7,9 @@ import { matchCost } from '../core/raids.js';
 import { xpForLevel } from '../core/villagers.js';
 import { fmtNum, fmtTime, fmtClock } from '../util/format.js';
 import { troopPortrait } from '../render/portraits.js';
-import { h, icon, costEl, bar, svg, stars, avatar } from './dom.js';
+import { h, icon, costEl, bar, svg, stars, avatar, patch, ensureSprite } from './dom.js';
 import * as panels from './panels.js';
 import { sound } from '../audio/sound.js';
-
-function swap(target, nodes) {
-  const tmp = document.createElement('div');
-  tmp.append(...nodes);
-  if (tmp.innerHTML === target.innerHTML) return false;
-  target.replaceChildren(...tmp.childNodes);
-  return true;
-}
 
 export class UI {
   constructor(game, root) {
@@ -26,6 +18,7 @@ export class UI {
     this.dirty = true;
     this.tick = 1;
     this.modal = null;
+    ensureSprite();
     this.build();
   }
 
@@ -48,10 +41,10 @@ export class UI {
     const playerBox = h(
       'div',
       { class: 'hud-player', onclick: () => this.openModal(panels.settingsPanel(this)) },
-      h('div', { class: 'lvl-badge' }, this.player.lvl),
+      h('div', { class: 'lvl-badge' }, icon('xp'), this.player.lvl),
       h('div', { class: 'pinfo' }, this.player.name, h('div', { class: 'xpbar' }, this.player.xp)),
     );
-    const trophyBox = h('div', { class: 'hud-trophies' }, icon('trophy', 'big'), this.player.trophies);
+    const trophyBox = h('div', { class: 'hud-trophies' }, icon('trophy'), this.player.trophies);
     this.res = {};
     const resBox = h('div', { class: 'hud-res' });
     for (const k of ['gold', 'elixir', 'gems']) {
@@ -59,11 +52,12 @@ export class UI {
       const fill = h('div', { class: 'res-fill' });
       const capEl = h('div', { class: 'res-cap' });
       this.res[k] = { val, fill, capEl };
-      resBox.appendChild(h('div', { class: `res-row res-${k}` }, h('div', { class: 'res-bar' }, fill, val), icon(k, 'big res-icon'), capEl));
+      resBox.appendChild(h('div', { class: `res-row res-${k}` }, capEl, h('div', { class: 'res-bar' }, fill, h('div', { class: 'res-gloss' }), val), icon(k, 'res-icon')));
     }
     this.builderEl = h('span');
     this.villagerEl = h('span');
-    this.shieldEl = h('div', { class: 'hud-chip shield' });
+    this.shieldText = h('span');
+    this.shieldEl = h('div', { class: 'hud-chip shield' }, icon('shield'), this.shieldText);
     const centerBox = h(
       'div',
       { class: 'hud-center' },
@@ -71,14 +65,14 @@ export class UI {
       h('div', { class: 'hud-chip', title: 'Villagers', onclick: () => this.openModal(panels.villagersPanel(this)) }, svg('people'), this.villagerEl),
       this.shieldEl,
     );
-    this.attackBtn = h('button', { class: 'big-btn attack-btn', onclick: () => this.openModal(panels.attackPanel(this)) }, svg('swords'), h('span', { text: 'Attack!' }));
+    this.attackBtn = h('button', { class: 'big-btn attack-btn', onclick: () => this.openModal(panels.attackPanel(this)) }, h('span', { class: 'big-ico' }, svg('swords')), h('span', { class: 'big-label', text: 'Attack!' }));
     const right = h(
       'div',
       { class: 'hud-buttons' },
-      h('button', { class: 'round-btn', onclick: () => this.openModal(panels.logPanel(this)) }, svg('log'), h('span', { text: 'Log' })),
-      h('button', { class: 'round-btn', onclick: () => this.openModal(panels.villagersPanel(this)) }, svg('people'), h('span', { text: 'Villagers' })),
-      h('button', { class: 'round-btn', onclick: () => this.openModal(panels.armyPanel(this)) }, svg('army'), h('span', { text: 'Army' })),
-      h('button', { class: 'big-btn shop-btn', onclick: () => this.openModal(panels.shopPanel(this)) }, svg('shop'), h('span', { text: 'Shop' })),
+      this.roundBtn('log', 'Log', () => this.openModal(panels.logPanel(this))),
+      this.roundBtn('people', 'Villagers', () => this.openModal(panels.villagersPanel(this))),
+      this.roundBtn('army', 'Army', () => this.openModal(panels.armyPanel(this))),
+      h('button', { class: 'big-btn shop-btn', onclick: () => this.openModal(panels.shopPanel(this)) }, h('span', { class: 'big-ico' }, svg('shop')), h('span', { class: 'big-label', text: 'Shop' })),
     );
     this.hud.append(
       h('div', { class: 'hud-tl' }, playerBox, trophyBox),
@@ -96,7 +90,7 @@ export class UI {
     // ----- battle HUD -----
     this.bhud = h('div', { class: 'bhud' });
 
-    this.muteBtn = h('button', { class: 'round-btn small mute-btn', title: 'Sound', onclick: () => { sound.toggleMute(); this.renderMute(); } });
+    this.muteBtn = h('button', { class: 'round-btn mute-btn', title: 'Sound', onclick: () => { sound.toggleMute(); this.renderMute(); } });
     this.renderMute();
     this.toasts = h('div', { class: 'toasts' });
     this.modalRoot = h('div', { class: 'modal-root' });
@@ -108,6 +102,10 @@ export class UI {
       const name = b.dataset.sfx || (b.classList.contains('tab') ? 'tab' : 'click');
       if (name !== 'none') sound.play(name);
     }, true);
+  }
+
+  roundBtn(ico, label, onClick) {
+    return h('button', { class: 'round-btn', onclick: onClick }, h('span', { class: 'round-ico' }, svg(ico)), h('span', { class: 'round-label', text: label }));
   }
 
   refresh() {
@@ -170,7 +168,7 @@ export class UI {
     this.builderEl.textContent = `${eco.freeBuilders(s)}/${eco.buildersTotal(s)}`;
     this.villagerEl.textContent = `${s.villagers.length}/${eco.housingCap(s)}`;
     if (s.shield > 0) {
-      this.shieldEl.textContent = `Shield ${fmtTime(s.shield)}`;
+      this.shieldText.textContent = `Shield ${fmtTime(s.shield)}`;
       this.shieldEl.classList.remove('hidden');
     } else this.shieldEl.classList.add('hidden');
   }
@@ -179,8 +177,8 @@ export class UI {
   actBtn(name, label, sub, onClick, cls = '', disabled = false) {
     return h(
       'button',
-      { class: `act-btn ${cls} ${disabled ? 'dim' : ''}`, onclick: (e) => { e.stopPropagation(); onClick(); } },
-      h('div', { class: 'act-ico' }, svg(name)),
+      { class: `act-btn ${cls} ${disabled ? 'dim' : ''}`, 'data-key': name, onclick: (e) => { e.stopPropagation(); onClick(); } },
+      h('div', { class: 'act-ico' }, name === 'collect' ? icon(cls) : svg(name)),
       h('div', { class: 'act-label' }, label),
       sub ? h('div', { class: 'act-sub' }, sub) : null,
     );
@@ -194,10 +192,17 @@ export class UI {
     if (!nodes || game.placement || game.mode !== 'village') {
       el.classList.add('hidden');
       el.replaceChildren();
+      this.actionKey = null;
       return;
     }
+    // a different selection gets a fresh bar (and its entrance animation)
+    const key = `${sel.kind}:${sel.id}`;
+    if (key !== this.actionKey) {
+      this.actionKey = key;
+      el.replaceChildren();
+    }
     el.classList.remove('hidden');
-    swap(el, nodes);
+    patch(el, nodes);
   }
 
   actionNodes(sel) {
@@ -262,14 +267,14 @@ export class UI {
   renderPlaceBar() {
     const pb = this.placeBar;
     const pl = this.game.placement;
-    pb.innerHTML = '';
     if (!pl) {
       pb.classList.add('hidden');
+      pb.replaceChildren();
       return;
     }
     pb.classList.remove('hidden');
     const d = BUILDINGS[pl.type];
-    pb.append(
+    patch(pb, [
       h(
         'div',
         { class: 'place-info' },
@@ -278,7 +283,7 @@ export class UI {
       ),
       h('button', { class: 'circle-btn red', onclick: () => this.game.cancelPlacement() }, svg('cancel')),
       h('button', { class: `circle-btn green ${pl.valid === false ? 'dim' : ''}`, onclick: () => this.game.confirmPlacement() }, svg('check')),
-    );
+    ]);
   }
 
   renderRaidBanner() {
@@ -290,7 +295,7 @@ export class UI {
       return;
     }
     rb.classList.remove('hidden');
-    swap(rb, [
+    patch(rb, [
       h('div', { class: 'raid-text' }, h('b', {}, `${pr.raid.name} is attacking!`), h('span', {}, `Raiders arrive in ${Math.ceil(pr.left)}s`)),
       h('button', { class: 'btn green', onclick: () => this.game.watchRaid() }, 'Defend'),
       h('button', { class: 'btn', onclick: () => this.game.resolveRaidQuietly() }, 'Skip'),
@@ -298,16 +303,28 @@ export class UI {
   }
 
   // ---------- battle HUD ----------
+  // The skeleton is built once per battle; afterwards only values are patched.
   renderBattleHud() {
     const v = this.game.view;
     const el = this.bhud;
-    el.innerHTML = '';
-    if (!v?.sim) return;
+    if (!v?.sim) {
+      el.replaceChildren();
+      this.bView = null;
+      return;
+    }
+    if (this.bView !== v) this.buildBattleHud(v);
+    this.updateBattleHud();
+  }
+
+  buildBattleHud(v) {
+    const el = this.bhud;
+    el.replaceChildren();
+    this.bView = v;
     const sim = v.sim;
     this.b = {};
     if (v.mode === 'attack') {
       const e = v.enemy;
-      const avail = sim.totalLootAvailable();
+      this.b.availTotal = sim.totalLootAvailable();
       this.b.lootGold = h('span');
       this.b.lootElixir = h('span');
       el.append(
@@ -315,112 +332,113 @@ export class UI {
           'div',
           { class: 'bh-enemy' },
           h('div', { class: 'bh-name' }, e.name, h('span', { class: 'th-pill' }, `TH ${e.th}`)),
-          h('div', { class: 'bh-loot-title' }, 'Available loot:'),
-          h('div', { class: 'bh-loot' }, this.b.lootGold, icon('gold')),
-          h('div', { class: 'bh-loot' }, this.b.lootElixir, icon('elixir')),
-          h('div', { class: 'bh-trophy' }, icon('trophy'), `Victory: +${e.trophyWin}  Defeat: -${e.trophyLose}`),
+          h('div', { class: 'bh-loot-title' }, 'Available loot'),
+          h('div', { class: 'bh-loot gold' }, icon('gold'), this.b.lootGold),
+          h('div', { class: 'bh-loot elixir' }, icon('elixir'), this.b.lootElixir),
+          h('div', { class: 'bh-trophy' }, icon('trophy'), h('span', { class: 'win' }, `+${e.trophyWin}`), h('span', { class: 'lose' }, `-${e.trophyLose}`)),
         ),
       );
-      this.b.availTotal = avail;
     } else {
       el.append(
         h(
           'div',
           { class: 'bh-enemy defense' },
           h('div', { class: 'bh-name' }, `${v.raid.name} attacks!`),
-          h('div', { class: 'bh-loot-title' }, 'Your defenses and their Gunners & Lookouts are fighting back.'),
+          h('div', { class: 'bh-loot-title' }, 'Your defenses and their Gunners and Lookouts are fighting back.'),
         ),
       );
     }
     this.b.timerLabel = h('div', { class: 'bh-timer-label' });
     this.b.timer = h('div', { class: 'bh-timer' });
-    this.b.stars = h('div');
+    this.b.stars = h('div', { class: 'bh-stars-wrap' });
     this.b.destr = h('div', { class: 'bh-destr' });
-    this.b.speed = h('button', { class: 'btn small', onclick: () => { v.speed = v.speed === 1 ? 2 : v.speed === 2 ? 4 : 1; this.b.speed.textContent = `${v.speed}x`; } }, `${v.speed}x`);
+    this.b.speed = h('button', { class: 'btn small blue speed-btn', onclick: () => { v.speed = v.speed === 1 ? 2 : v.speed === 2 ? 4 : 1; this.updateBattleHud(); } });
     el.append(h('div', { class: 'bh-status' }, this.b.timerLabel, this.b.timer, this.b.stars, this.b.destr, this.b.speed));
 
     const bottom = h('div', { class: 'bh-bottom' });
-    this.b.endBtn = h('button', { class: `btn red end-btn ${v.mode === 'attack' ? '' : 'invisible'}`, onclick: () => this.game.endBattleEarly() }, v.mode === 'attack' && !sim.started ? 'Return Home' : 'End Battle');
+    this.b.endBtn = h('button', { class: `btn red end-btn ${v.mode === 'attack' ? '' : 'invisible'}`, onclick: () => this.game.endBattleEarly() });
     bottom.append(this.b.endBtn);
+    this.b.troopBar = h('div', { class: 'troop-bar' });
     if (v.mode === 'attack') {
-      const tb = h('div', { class: 'troop-bar' });
-      this.b.troopCards = {};
-      const types = TROOP_ORDER.filter((t) => (sim.army[t] || 0) > 0 || (sim.deployed[t] || 0) > 0);
-      if (!types.length) tb.append(h('div', { class: 'troop-empty' }, 'No troops! Train some in your Barracks.'));
-      for (const t of types) {
-        const count = h('div', { class: 'tc-count' });
-        const card = h(
-          'button',
-          { class: `troop-card ${v.selectedTroop === t ? 'sel' : ''}`, onclick: () => { v.selectedTroop = t; this.refresh(); } },
-          h('img', { src: troopPortrait(t), alt: TROOPS[t].name, draggable: 'false' }),
-          count,
-          h('div', { class: 'tc-lvl' }, String(this.state.research.levels[t] || 1)),
-        );
-        this.b.troopCards[t] = { card, count };
-        tb.append(card);
-      }
-      bottom.append(tb);
-      this.b.nextBtn = h('button', { class: 'btn yellow next-btn', onclick: () => this.game.nextMatch() }, 'Next ', costEl(matchCost(this.state)));
+      bottom.append(this.b.troopBar);
+      this.b.nextBtn = h('button', { class: 'btn yellow next-btn', onclick: () => this.game.nextMatch() }, 'Next', costEl(matchCost(this.state)));
       bottom.append(this.b.nextBtn);
     } else {
-      bottom.append(h('button', { class: 'btn yellow next-btn', onclick: () => { v.speed = 8; this.b.speed.textContent = '8x'; } }, svg('skip'), ' Fast Forward'));
+      bottom.append(h('div'), h('button', { class: 'btn yellow next-btn', onclick: () => { v.speed = 8; } }, svg('skip'), 'Fast Forward'));
     }
     this.b.lootGain = h('div', { class: 'bh-gain' });
     el.append(bottom, this.b.lootGain);
-    this.updateBattleHud();
+  }
+
+  troopBarNodes(v) {
+    const sim = v.sim;
+    const types = TROOP_ORDER.filter((t) => (sim.army[t] || 0) > 0 || (sim.deployed[t] || 0) > 0);
+    if (!types.length) return [h('div', { class: 'troop-empty' }, 'No troops! Train some in your Barracks.')];
+    return types.map((t) => {
+      const n = sim.army[t] || 0;
+      return h(
+        'button',
+        { class: `troop-card ${v.selectedTroop === t ? 'sel' : ''} ${n === 0 ? 'empty' : ''}`, 'data-key': t, onclick: () => { v.selectedTroop = t; this.updateBattleHud(); } },
+        h('img', { src: troopPortrait(t), alt: TROOPS[t].name, draggable: 'false' }),
+        h('div', { class: 'tc-count' }, `x${n}`),
+        h('div', { class: 'tc-lvl' }, String(this.state.research.levels[t] || 1)),
+      );
+    });
   }
 
   updateBattleHud() {
     const v = this.game.view;
-    if (!v?.sim || !this.b) return;
+    if (!v?.sim || !this.b || this.bView !== v) return;
     const sim = v.sim;
+    const got = sim.loot;
     if (v.mode === 'attack') {
-      const got = sim.loot;
       const av = this.b.availTotal;
       this.b.lootGold.textContent = fmtNum(Math.max(0, av.gold - got.gold));
       this.b.lootElixir.textContent = fmtNum(Math.max(0, av.elixir - got.elixir));
-      for (const [t, c] of Object.entries(this.b.troopCards || {})) {
-        const n = sim.army[t] || 0;
-        c.count.textContent = `x${n}`;
-        c.card.classList.toggle('empty', n === 0);
-        c.card.classList.toggle('sel', v.selectedTroop === t);
-      }
+      patch(this.b.troopBar, this.troopBarNodes(v));
       this.b.nextBtn.classList.toggle('invisible', sim.started);
-      this.b.endBtn.textContent = sim.started ? (sim.ended ? 'Return Home' : 'End Battle') : 'Return Home';
-      this.b.lootGain.innerHTML = '';
-      if (got.gold + got.elixir > 0) {
-        this.b.lootGain.append(h('span', {}, '+', fmtNum(got.gold), icon('gold')), h('span', {}, '+', fmtNum(got.elixir), icon('elixir')));
-      }
+      const endText = sim.started && !sim.ended ? 'End Battle' : 'Return Home';
+      if (this.b.endBtn.textContent !== endText) this.b.endBtn.textContent = endText;
+      patch(this.b.lootGain, got.gold + got.elixir > 0 ? [h('span', {}, icon('gold'), `+${fmtNum(got.gold)}`), h('span', {}, icon('elixir'), `+${fmtNum(got.elixir)}`)] : []);
     } else {
-      this.b.lootGain.innerHTML = '';
-      const got = sim.loot;
-      if (got.gold + got.elixir > 0) this.b.lootGain.append(h('span', { class: 'lost' }, '-', fmtNum(got.gold), icon('gold')), h('span', { class: 'lost' }, '-', fmtNum(got.elixir), icon('elixir')));
+      patch(this.b.lootGain, got.gold + got.elixir > 0 ? [h('span', { class: 'lost' }, icon('gold'), `-${fmtNum(got.gold)}`), h('span', { class: 'lost' }, icon('elixir'), `-${fmtNum(got.elixir)}`)] : []);
     }
-    if (!sim.started) {
-      this.b.timerLabel.textContent = 'Battle starts in:';
-      this.b.timer.textContent = fmtClock(v.scoutLeft);
-    } else {
-      this.b.timerLabel.textContent = 'Battle ends in:';
-      this.b.timer.textContent = fmtClock(sim.timeLeft);
-    }
+    const label = sim.started ? 'Battle ends in' : 'Battle starts in';
+    if (this.b.timerLabel.textContent !== label) this.b.timerLabel.textContent = label;
+    const clock = fmtClock(sim.started ? sim.timeLeft : v.scoutLeft);
+    if (this.b.timer.textContent !== clock) this.b.timer.textContent = clock;
     this.b.timer.classList.toggle('urgent', sim.started && sim.timeLeft < 30);
-    this.b.stars.innerHTML = '';
-    this.b.stars.append(stars(sim.stars(), 3, 'bh-stars'));
-    this.b.destr.textContent = `${sim.destruction()}% damage`;
+    patch(this.b.stars, [stars(sim.stars(), 3, 'bh-stars')]);
+    const destr = `${sim.destruction()}%`;
+    if (this.b.destr.textContent !== destr) this.b.destr.textContent = destr;
+    const sp = `${v.speed}x`;
+    if (this.b.speed.textContent !== sp) this.b.speed.textContent = sp;
   }
 
   // ---------- toasts ----------
   renderMute() {
-    this.muteBtn.replaceChildren(svg(sound.settings.muted ? 'mute' : 'speaker'));
+    this.muteBtn.replaceChildren(h('span', { class: 'round-ico' }, svg(sound.settings.muted ? 'mute' : 'speaker')));
   }
 
   toast(msg, kind = 'info', secs = 2.6) {
     if (kind === 'warn') sound.play('error');
+    // repeated identical messages bump the existing toast instead of stacking
+    const last = this.toasts.lastElementChild;
+    if (last && last.textContent === msg && !last.classList.contains('out')) {
+      last.classList.remove('bump');
+      void last.offsetWidth;
+      last.classList.add('bump');
+      clearTimeout(last._t1);
+      clearTimeout(last._t2);
+      last._t1 = setTimeout(() => last.classList.add('out'), secs * 1000);
+      last._t2 = setTimeout(() => last.remove(), secs * 1000 + 400);
+      return;
+    }
     const t = h('div', { class: `toast ${kind}` }, msg);
     this.toasts.appendChild(t);
     while (this.toasts.children.length > 4) this.toasts.firstChild.remove();
-    setTimeout(() => t.classList.add('out'), secs * 1000);
-    setTimeout(() => t.remove(), secs * 1000 + 400);
+    t._t1 = setTimeout(() => t.classList.add('out'), secs * 1000);
+    t._t2 = setTimeout(() => t.remove(), secs * 1000 + 400);
   }
 
   // ---------- modals ----------
@@ -434,37 +452,52 @@ export class UI {
   renderModal(fresh = false) {
     const m = this.modal;
     const root = this.modalRoot;
-    if (!m) {
-      root.innerHTML = '';
-      root.classList.remove('open');
-      return;
-    }
-    const prevBody = root.querySelector('.modal-body');
-    const scroll = !fresh && prevBody ? prevBody.scrollTop : 0;
-    const body = h('div', { class: 'modal-body' }, m.render());
-    if (!fresh && prevBody && prevBody.innerHTML === body.innerHTML) {
-      const t = root.querySelector('.modal-title');
-      const title = typeof m.title === 'function' ? m.title() : m.title;
-      if (t && t.textContent !== title) t.textContent = title;
-      return;
-    }
-    root.innerHTML = '';
+    if (!m) return this.hideModal();
+    clearTimeout(this.modalCloseTimer);
+    root.classList.remove('closing');
     root.classList.add('open');
-    const box = h(
-      'div',
-      { class: `modal ${m.wide ? 'wide' : ''} ${m.cls || ''}`, onclick: (e) => e.stopPropagation() },
-      h('div', { class: 'modal-head' }, h('div', { class: 'modal-title' }, typeof m.title === 'function' ? m.title() : m.title), m.noClose ? null : h('button', { class: 'modal-x', 'data-sfx': 'none', onclick: () => this.closeModal() }, svg('cancel'))),
-      body,
-    );
-    root.append(h('div', { class: 'modal-backdrop', onclick: () => !m.noClose && this.closeModal() }), box);
-    body.scrollTop = scroll;
+    const title = typeof m.title === 'function' ? m.title() : m.title;
+    const content = m.render();
+    if (!this.modalBox || fresh) {
+      const animate = !this.modalBox;
+      if (!this.modalBox) {
+        root.replaceChildren();
+        this.modalBackdrop = h('div', { class: 'modal-backdrop', onclick: () => !this.modal?.noClose && this.closeModal() });
+        this.modalBox = h('div', { class: 'modal', onclick: (e) => e.stopPropagation() });
+        root.append(this.modalBackdrop, this.modalBox);
+      }
+      this.modalTitle = h('div', { class: 'modal-title' }, title);
+      this.modalBody = h('div', { class: 'modal-body' }, content);
+      this.modalBox.className = `modal ${m.wide ? 'wide' : ''} ${m.cls || ''} ${animate ? 'enter' : 'swap'}`.replace(/\s+/g, ' ');
+      this.modalBox.replaceChildren(
+        h('div', { class: 'modal-head' }, h('div', { class: 'modal-ribbon' }, this.modalTitle), m.noClose ? null : h('button', { class: 'modal-x', 'data-sfx': 'none', 'aria-label': 'Close', onclick: () => this.closeModal() }, svg('cancel'))),
+        this.modalBody,
+      );
+      return;
+    }
+    if (this.modalTitle.textContent !== title) this.modalTitle.textContent = title;
+    patch(this.modalBody, [content]);
+  }
+
+  hideModal() {
+    const root = this.modalRoot;
+    if (!this.modalBox) return;
+    root.classList.add('closing');
+    const box = this.modalBox;
+    this.modalBox = null;
+    clearTimeout(this.modalCloseTimer);
+    this.modalCloseTimer = setTimeout(() => {
+      if (this.modalBox) return;
+      root.classList.remove('open', 'closing');
+      if (box.parentNode === root) root.replaceChildren();
+    }, 170);
   }
 
   closeModal() {
     const m = this.modal;
     if (m) sound.play('close');
     this.modal = null;
-    this.renderModal();
+    this.hideModal();
     m?.onClose?.();
   }
 

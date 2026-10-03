@@ -47,7 +47,7 @@ export function shopPanel(ui) {
             h('div', { class: 'card-name' }, d.name),
             h('img', { class: 'card-img', src: buildingPortrait(type, 1), alt: d.name, draggable: 'false' }),
             h('div', { class: 'card-meta' }, h('span', {}, `Built: ${count}/${max}`), h('span', {}, time ? fmtTime(time) : 'Instant')),
-            locked ? h('div', { class: 'card-lock' }, blocker) : costEl(eco.buildCost(s, type), s),
+            h('div', { class: 'card-foot' }, locked ? h('div', { class: 'card-lock' }, blocker) : costEl(eco.buildCost(s, type), s)),
           ),
         );
       }
@@ -304,7 +304,7 @@ export function armyPanel(ui) {
           h('div', { class: 'card-name' }, T.name, h('span', { class: 'lvl-pill' }, `Lv ${army.troopLevel(s, t)}`)),
           h('img', { class: 'card-img', src: troopPortrait(t), alt: T.name, draggable: 'false' }),
           h('div', { class: 'card-meta' }, h('span', {}, `Space ${T.housing}`), h('span', {}, fmtTime(T.time))),
-          locked ? h('div', { class: 'card-lock' }, `Barracks Lv ${T.unlock}`) : costEl(army.troopCost(s, t), s)));
+          h('div', { class: 'card-foot' }, locked ? h('div', { class: 'card-lock' }, `Barracks Lv ${T.unlock}`) : costEl(army.troopCost(s, t), s))));
       }
       return h('div', {}, head, current, queue, h('div', { class: 'section-title' }, 'Train troops'), grid);
     },
@@ -339,8 +339,8 @@ export function labPanel(ui) {
           h('div', { class: 'card-name' }, T.name),
           h('img', { class: 'card-img', src: troopPortrait(t), alt: T.name, draggable: 'false' }),
           h('div', { class: 'card-meta' }, h('span', {}, maxed ? `Lv ${lvl} (max)` : `Lv ${lvl} > ${lvl + 1}`), maxed ? null : h('span', {}, fmtTime(T.researchTime[lvl]))),
-          h('div', { class: 'card-stats' }, `HP ${T.hp[lvl - 1]}${maxed ? '' : ` > ${T.hp[lvl]}`}  DPS ${T.dps[lvl - 1]}${maxed ? '' : ` > ${T.dps[lvl]}`}`),
-          maxed ? h('div', { class: 'card-lock' }, 'Maxed') : blocker && blocker !== 'Not enough elixir' ? h('div', { class: 'card-lock' }, blocker) : costEl(army.researchCost(s, t), s)));
+          h('div', { class: 'card-stats' }, h('span', {}, `HP ${T.hp[lvl - 1]}`, maxed ? null : h('b', {}, ` ${T.hp[lvl]}`)), h('span', {}, `DPS ${T.dps[lvl - 1]}`, maxed ? null : h('b', {}, ` ${T.dps[lvl]}`))),
+          h('div', { class: 'card-foot' }, maxed ? h('div', { class: 'card-lock' }, 'Maxed') : blocker && blocker !== 'Not enough elixir' ? h('div', { class: 'card-lock' }, blocker) : costEl(army.researchCost(s, t), s))));
       }
       return h('div', {}, h('div', { class: 'muted' }, `Laboratory level ${army.labLevel(s)} can research troops up to level ${army.labLevel(s) + 1}. Scholars speed up research.`), cur, grid);
     },

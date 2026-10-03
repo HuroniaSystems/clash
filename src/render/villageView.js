@@ -11,6 +11,7 @@ import { Effects } from './effects.js';
 import { hpBar } from './overlay.js';
 import { levelDef, storageCap, occupancy, canPlace, findBuilding } from '../core/economy.js';
 import { fmtTime } from '../util/format.js';
+import { icon } from '../ui/dom.js';
 
 const JOB_HAT = {
   mining: '#f2c437',
@@ -407,7 +408,7 @@ export class VillageView {
         if (show && !item) {
           const el = document.createElement('button');
           el.className = `bubble bubble-${d.resource}`;
-          el.innerHTML = `<span class="icon icon-${d.resource}"></span>`;
+          el.appendChild(icon(d.resource));
           el.addEventListener('pointerdown', (e) => e.stopPropagation());
           el.addEventListener('click', (e) => {
             e.stopPropagation();

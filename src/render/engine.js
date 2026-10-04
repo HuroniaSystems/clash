@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { GRID } from '../data/buildings.js';
 
 const YAW = Math.PI / 4;
-const PITCH = THREE.MathUtils.degToRad(52);
+// a lower camera shows more of the building fronts
+const PITCH = THREE.MathUtils.degToRad(37);
 const CAM_DIST = 90;
 const TAP_SLOP = 7;
 

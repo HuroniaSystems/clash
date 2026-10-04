@@ -9,7 +9,7 @@ const SETTINGS_KEY = 'clash-of-villages-audio-v1';
 // Minimum seconds between two plays of the same effect (keeps busy battles from clipping).
 const THROTTLE = {
   sword: 0.07, punch: 0.07, arrow: 0.06, arrowHit: 0.06, cannon: 0.08, smallHit: 0.05, die: 0.06, deploy: 0.05,
-  explosion: 0.08, zap: 0.08, fireball: 0.08, rocket: 0.1, mortar: 0.15, wallBreak: 0.1, click: 0.03, coin: 0.12, elixir: 0.12,
+  coinTick: 0.05, elixirTick: 0.05, explosion: 0.08, zap: 0.08, fireball: 0.08, rocket: 0.1, mortar: 0.15, wallBreak: 0.1, click: 0.03, coin: 0.12, elixir: 0.12,
 };
 
 const REVERB_SEND = { complete: 0.35, levelup: 0.4, victory: 0.4, defeat: 0.4, horn: 0.5, star: 0.3, chime: 0.35, gem: 0.3, alarm: 0.4, bird: 0.6, destroy: 0.25, explosion: 0.2 };

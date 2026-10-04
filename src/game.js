@@ -126,6 +126,8 @@ export class Game {
     const got = eco.collect(this.state, id);
     if (got > 0) {
       this.overlay.floatText(`+${fmtNum(got)}`, this.view.worldPosOf(id), res);
+      const sp = this.engine.worldToScreen(this.view.worldPosOf(id));
+      this.ui.flyResource(res, sp, got);
       sound.play(res === 'gold' ? 'coin' : 'elixir', { amount: got, pan: this.panOf(this.view.worldPosOf(id)) });
       this.view.burst?.(id, res);
     } else {
@@ -252,9 +254,11 @@ export class Game {
   }
 
   removeObstacle(id) {
+    const objPos = this.view.omeshes?.get(id)?.position.clone();
     const r = eco.removeObstacle(this.state, id);
     if (this.toastResult(r)) {
       this.ui.toast(`Cleared! Found ${r.gems} gems`, 'good');
+      if (objPos) this.ui.flyResource('gems', this.engine.worldToScreen(objPos.setY(1)), r.gems * 30);
       sound.play('chop');
       sound.play('gem', { delay: 0.6 });
       this.selection = null;

@@ -51,8 +51,10 @@ export class UI {
       const val = h('span', { class: 'res-val' });
       const fill = h('div', { class: 'res-fill' });
       const capEl = h('div', { class: 'res-cap' });
-      this.res[k] = { val, fill, capEl };
-      resBox.appendChild(h('div', { class: `res-row res-${k}` }, capEl, h('div', { class: 'res-bar' }, fill, h('div', { class: 'res-gloss' }), val), icon(k, 'res-icon')));
+      const ico = icon(k, 'res-icon');
+      const row = h('div', { class: `res-row res-${k}` }, capEl, h('div', { class: 'res-bar' }, fill, h('div', { class: 'res-gloss' }), val), ico);
+      this.res[k] = { val, fill, capEl, ico, row, disp: null, last: null, hold: 0, shown: '' };
+      resBox.appendChild(row);
     }
     this.builderEl = h('span');
     this.villagerEl = h('span');
@@ -92,9 +94,10 @@ export class UI {
 
     this.muteBtn = h('button', { class: 'round-btn mute-btn', title: 'Sound', onclick: () => { sound.toggleMute(); this.renderMute(); } });
     this.renderMute();
+    this.flyLayer = h('div', { class: 'fly-layer' });
     this.toasts = h('div', { class: 'toasts' });
     this.modalRoot = h('div', { class: 'modal-root' });
-    r.append(this.hud, this.actionBar, this.placeBar, this.raidBanner, this.bhud, this.muteBtn, this.toasts, this.modalRoot);
+    r.append(this.flyLayer, this.hud, this.actionBar, this.placeBar, this.raidBanner, this.bhud, this.muteBtn, this.toasts, this.modalRoot);
     // every button gets a click; buttons can opt into a different sound with data-sfx
     r.addEventListener('click', (e) => {
       const b = e.target.closest('button');
@@ -115,6 +118,7 @@ export class UI {
   // ---------- per-frame ----------
   update(dt) {
     this.tick += dt;
+    if (this.game.mode === 'village') this.animateResources(dt);
     const game = this.game;
     const inVillage = game.mode === 'village';
     this.hud.classList.toggle('hidden', !inVillage);
@@ -158,19 +162,96 @@ export class UI {
     this.player.xp.style.width = `${(s.xp / eco.xpForPlayerLevel(s.level)) * 100}%`;
     this.player.trophies.textContent = fmtNum(s.trophies);
     for (const k of ['gold', 'elixir']) {
-      this.res[k].val.textContent = fmtNum(s.resources[k]);
-      this.res[k].fill.style.width = `${cap[k] ? Math.min(100, (s.resources[k] / cap[k]) * 100) : 0}%`;
-      this.res[k].capEl.textContent = `Max: ${fmtNum(cap[k])}`;
+      const t = `Max: ${fmtNum(cap[k])}`;
+      if (this.res[k].capEl.textContent !== t) this.res[k].capEl.textContent = t;
     }
-    this.res.gems.val.textContent = fmtNum(s.resources.gems);
     this.res.gems.fill.style.width = '100%';
-    this.res.gems.capEl.textContent = '';
     this.builderEl.textContent = `${eco.freeBuilders(s)}/${eco.buildersTotal(s)}`;
     this.villagerEl.textContent = `${s.villagers.length}/${eco.housingCap(s)}`;
     if (s.shield > 0) {
       this.shieldText.textContent = `Shield ${fmtTime(s.shield)}`;
       this.shieldEl.classList.remove('hidden');
     } else this.shieldEl.classList.add('hidden');
+  }
+
+  // ---------- animated resource counters ----------
+  // Displayed values ease toward the real ones; a hold delays counting until
+  // flying coins reach the bar.
+  animateResources(dt) {
+    const s = this.state;
+    const cap = eco.storageCap(s);
+    const now = performance.now();
+    for (const k of ['gold', 'elixir', 'gems']) {
+      const r = this.res[k];
+      const target = s.resources[k];
+      if (r.disp == null) r.disp = r.last = target;
+      if (target > r.last + (k === 'gems' ? 0.5 : 9) && now >= r.hold) this.bump(k);
+      r.last = target;
+      if (now < r.hold) continue;
+      const diff = target - r.disp;
+      let state = '';
+      if (Math.abs(diff) < 0.5) r.disp = target;
+      else {
+        // fast at first, settles in about half a second
+        const step = diff * Math.min(1, dt * 4.5);
+        r.disp += Math.sign(diff) * Math.max(Math.abs(step), Math.min(Math.abs(diff), 60 * dt));
+        state = diff > 0 ? 'gain' : 'spend';
+      }
+      const text = fmtNum(Math.round(r.disp));
+      if (text !== r.shown) {
+        r.shown = text;
+        r.val.textContent = text;
+      }
+      r.row.classList.toggle('gain', state === 'gain');
+      r.row.classList.toggle('spend', state === 'spend');
+      if (k !== 'gems') r.fill.style.width = `${cap[k] ? Math.min(100, (r.disp / cap[k]) * 100) : 0}%`;
+    }
+  }
+
+  bump(res) {
+    const r = this.res[res];
+    if (!r) return;
+    r.ico.classList.remove('bump');
+    void r.ico.offsetWidth;
+    r.ico.classList.add('bump');
+    r.row.classList.remove('flash');
+    void r.row.offsetWidth;
+    r.row.classList.add('flash');
+  }
+
+  // Coins (or elixir drops, gems) fly from a screen point into the resource bar.
+  flyResource(res, from, amount) {
+    const r = this.res[res];
+    if (!r || this.game.mode !== 'village') return;
+    const to = r.ico.getBoundingClientRect();
+    const tx = to.left + to.width / 2;
+    const ty = to.top + to.height / 2;
+    const n = Math.max(4, Math.min(12, Math.round(3 + amount / 50)));
+    const first = 520;
+    r.hold = performance.now() + first;
+    for (let i = 0; i < n; i++) {
+      const el = icon(res, 'fly-coin');
+      this.flyLayer.appendChild(el);
+      const a = Math.random() * Math.PI * 2;
+      const spread = 28 + Math.random() * 34;
+      const x0 = from.x, y0 = from.y;
+      const x1 = x0 + Math.cos(a) * spread, y1 = y0 + Math.sin(a) * spread * 0.7 - 24;
+      const delay = i * 45;
+      const dur = first + 120 + Math.random() * 160;
+      const anim = el.animate(
+        [
+          { transform: `translate(${x0}px, ${y0}px) scale(0.4) rotate(0deg)`, opacity: 0, easing: 'cubic-bezier(.2,.8,.3,1)' },
+          { transform: `translate(${x1}px, ${y1}px) scale(1.15) rotate(${a * 30}deg)`, opacity: 1, offset: 0.3, easing: 'cubic-bezier(.55,0,.85,.35)' },
+          { transform: `translate(${tx}px, ${ty}px) scale(0.75) rotate(${a * 60}deg)`, opacity: 1 },
+        ],
+        { duration: dur, delay, fill: 'both' },
+      );
+      anim.onfinish = () => {
+        el.remove();
+        this.bump(res);
+        sound.play(res === 'elixir' ? 'elixirTick' : 'coinTick', { volume: 0.6 });
+      };
+    }
   }
 
   // ---------- action bar ----------

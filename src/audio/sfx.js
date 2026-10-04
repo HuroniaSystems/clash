@@ -231,6 +231,11 @@ export const SFX = {
     for (let i = 0; i < 3; i++) bell(ctx, out, t + i * 0.32, { freq: 880, gain: 0.12, dur: 0.6, partials: [1, 2.4, 3.6, 5.1] });
   },
   tick: (ctx, out, t) => woodKnock(ctx, out, t, 900, 0.1),
+  coinTick: (ctx, out, t) => bell(ctx, out, t, { freq: rnd(2400, 3200), gain: 0.05, dur: 0.18, partials: [1, 2.4] }),
+  elixirTick: (ctx, out, t) => {
+    const f = rnd(500, 800);
+    tone(ctx, out, t, { type: 'sine', freq: f, freqEnd: f * 2.2, glide: 0.05, dur: 0.07, gain: 0.08 });
+  },
   bird: (ctx, out, t) => {
     const base = rnd(2200, 3600);
     const n = 2 + Math.floor(Math.random() * 4);
